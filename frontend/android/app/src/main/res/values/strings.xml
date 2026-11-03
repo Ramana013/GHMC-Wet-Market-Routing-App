@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">GHMC Wet Market Routing</string>
+    <string name="title_activity_main">GHMC Wet Market Routing</string>
+    <string name="package_name">com.ghmc.wetmarket</string>
+    <string name="custom_url_scheme">com.ghmc.wetmarket</string>
+</resources>

@@ -1,0 +1,36 @@
+
+body, html, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden; /* Prevents the whole page from scrolling */
+}
+.leaflet-popup-content {
+  margin: 12px 15px !important; /* Adds spacing around the whole card */
+}
+
+.shop-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.shop-card-title {
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.2;
+  margin: 0;
+  color: #1e293b;
+}
+
+.shop-card-badge {
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: bold;
+  color: white;
+  white-space: nowrap;
+}
