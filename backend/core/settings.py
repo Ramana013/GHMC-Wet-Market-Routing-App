@@ -20,8 +20,8 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-os.environ['PROJ_LIB'] = str(BASE_DIR / 'venv' / 'Lib' / 'site-packages' / 'osgeo' / 'data' / 'proj')
-os.environ['GDAL_DATA'] = str(BASE_DIR / 'venv' / 'Lib' / 'site-packages' / 'osgeo' / 'data' / 'gdal')
+# os.environ['PROJ_LIB'] = str(BASE_DIR / 'venv' / 'Lib' / 'site-packages' / 'osgeo' / 'data' / 'proj')
+# os.environ['GDAL_DATA'] = str(BASE_DIR / 'venv' / 'Lib' / 'site-packages' / 'osgeo' / 'data' / 'gdal')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -30,9 +30,9 @@ os.environ['GDAL_DATA'] = str(BASE_DIR / 'venv' / 'Lib' / 'site-packages' / 'osg
 SECRET_KEY = 'django-insecure-hjb-#jx9k%z#5hk6tbu7@0dmo29nb1a99biw$l21h15kf&x!iy'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'schematic-spool-unquote.ngrok-free.dev']
+ALLOWED_HOSTS = ['*']
 CSRF_TRUSTED_ORIGINS = ['https://ghmc-backend.onrender.com']
 
 
@@ -56,9 +56,10 @@ INSTALLED_APPS = [
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 MIDDLEWARE = [
-    'whitenoise.middleware.WhiteNoiseMiddleware',
+
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -132,7 +133,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
-
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -143,7 +144,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # # GEOS Path (Add this line)
 # GEOS_LIBRARY_PATH = os.path.join(BASE_DIR, 'venv', 'Lib', 'site-packages', 'osgeo', 'geos_c.dll')
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+
+CORS_ALLOW_ALL_ORIGINS = True
