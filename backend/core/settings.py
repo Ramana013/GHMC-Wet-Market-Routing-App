@@ -19,6 +19,10 @@ from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+if os.path.exists('/usr/share/proj'):
+    os.environ['PROJ_LIB'] = '/usr/share/proj'
+if os.path.exists('/usr/share/gdal'):
+    os.environ['GDAL_DATA'] = '/usr/share/gdal'
 
 # os.environ['PROJ_LIB'] = str(BASE_DIR / 'venv' / 'Lib' / 'site-packages' / 'osgeo' / 'data' / 'proj')
 # os.environ['GDAL_DATA'] = str(BASE_DIR / 'venv' / 'Lib' / 'site-packages' / 'osgeo' / 'data' / 'gdal')
@@ -33,7 +37,7 @@ SECRET_KEY = 'django-insecure-hjb-#jx9k%z#5hk6tbu7@0dmo29nb1a99biw$l21h15kf&x!iy
 DEBUG = False
 
 ALLOWED_HOSTS = ['*']
-CSRF_TRUSTED_ORIGINS = ['https://ghmc-backend.onrender.com']
+CSRF_TRUSTED_ORIGINS = ['https://ghmc-wet-marker-routing-app.onrender.com']
 
 
 
