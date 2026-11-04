@@ -147,7 +147,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 #
 # # GEOS Path (Add this line)
 # GEOS_LIBRARY_PATH = os.path.join(BASE_DIR, 'venv', 'Lib', 'site-packages', 'osgeo', 'geos_c.dll')
-GDAL_LIBRARY_PATH = '/usr/lib/x86_64-linux-gnu/libgdal.so'
-GEOS_LIBRARY_PATH = '/usr/lib/x86_64-linux-gnu/libgeos_c.so'
+
 
 CORS_ALLOW_ALL_ORIGINS = True
