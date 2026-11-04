@@ -34,7 +34,7 @@ if os.path.exists('/usr/share/gdal'):
 SECRET_KEY = 'django-insecure-hjb-#jx9k%z#5hk6tbu7@0dmo29nb1a99biw$l21h15kf&x!iy'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 CSRF_TRUSTED_ORIGINS = ['https://ghmc-wet-marker-routing-app.onrender.com']
