@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: ghmc-backend
+    env: python
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn core.wsgi:application"

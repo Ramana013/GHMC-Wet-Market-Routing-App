@@ -32,6 +32,8 @@ SECRET_KEY = 'django-insecure-hjb-#jx9k%z#5hk6tbu7@0dmo29nb1a99biw$l21h15kf&x!iy
 DEBUG = True
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'schematic-spool-unquote.ngrok-free.dev']
+CSRF_TRUSTED_ORIGINS = ['https://ghmc-backend.onrender.com']
+
 
 
 # Application definition
@@ -50,7 +52,10 @@ INSTALLED_APPS = [
     'api',
 ]
 
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 MIDDLEWARE = [
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
