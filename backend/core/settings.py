@@ -100,6 +100,8 @@ DATABASES = {
         conn_max_age=600,
     )
 }
+# Force the PostGIS engine regardless of the URL scheme
+DATABASES["default"]["ENGINE"] = "django.contrib.gis.db.backends.postgis"
 
 
 # Password validation
