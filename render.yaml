@@ -1,7 +1,7 @@
 services:
   - type: web
     name: ghmc-wet-market-frontend
-    env: static
+    runtime: static          # Key fix: change env: static to runtime: static
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/dist
     routes:
