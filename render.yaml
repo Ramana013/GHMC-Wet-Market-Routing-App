@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: ghmc-wet-market-frontend
+    env: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://ghmc-wet-marker-routing-app.onrender.com
