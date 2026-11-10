@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Shop Detail - {{ shop.title }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8 text-gray-800 min-h-screen">
+    <div class="max-w-4xl mx-auto">
+
+        <!-- Back Button -->
+        <a href="javascript:history.back()" class="text-blue-500 hover:underline mb-6 inline-block font-medium">← Back to Results</a>
+
+        <!-- Shop Details Card -->
+        <div class="bg-white rounded-xl shadow-lg p-8 mb-8 border-t-4 border-blue-500">
+            <div class="flex justify-between items-start mb-6">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">{{ shop.title }}</h1>
+                    <p class="text-gray-500 mt-1">{{ shop.full_address|default:"Address not provided" }}</p>
+                </div>
+
+                <!-- Risk Badge -->
+                <div class="text-right">
+                    <span class="text-sm text-gray-500 uppercase font-semibold">Risk Level</span><br>
+                    <span class="inline-block mt-1 px-4 py-2 rounded-lg text-lg font-bold
+                        {% if shop.risk_level == 'High' or shop.risk_level == 'Critical' %}bg-red-100 text-red-800
+                        {% elif shop.risk_level == 'Moderate' %}bg-yellow-100 text-yellow-800
+                        {% else %}bg-green-100 text-green-800{% endif %}">
+                        {{ shop.risk_level }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Data Grid -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 border-t pt-6">
+                <div>
+                    <p class="text-xs text-gray-500 uppercase font-semibold">Zone</p>
+                    <p class="font-medium text-lg">{{ shop.zone|default:"-" }}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500 uppercase font-semibold">Circle</p>
+                    <p class="font-medium text-lg">{{ shop.circle|default:"-" }}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500 uppercase font-semibold">Ward</p>
+                    <p class="font-medium text-lg">{{ shop.ward|default:"-" }}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500 uppercase font-semibold">Owner</p>
+                    <p class="font-medium text-lg">{{ shop.owner_name|default:"-" }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty Sheet Area -->
+        <div class="bg-white rounded-xl shadow-sm p-8 min-h-[400px] border border-dashed border-gray-300 flex items-center justify-center">
+            <div class="text-center text-gray-400">
+                <svg class="mx-auto h-12 w-12 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p class="text-lg font-medium text-gray-500">Empty Sheet Area</p>
+                <p class="text-sm mt-1">Survey data / Forms will be displayed here.</p>
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>

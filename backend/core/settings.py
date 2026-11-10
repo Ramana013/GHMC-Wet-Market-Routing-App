@@ -24,6 +24,21 @@ if os.path.exists('/usr/share/proj'):
 if os.path.exists('/usr/share/gdal'):
     os.environ['GDAL_DATA'] = '/usr/share/gdal'
 
+# GDAL / GEOS paths for Windows local dev.
+# Set as Django settings (not just env vars) so GeoDjango's libgdal.py
+# reads them directly, bypassing any env-var resolution order issues.
+if os.name == 'nt':
+    GDAL_LIBRARY_PATH = r"C:\ghmc-wet-market-routing\.venv\Lib\site-packages\osgeo\gdal.dll"
+    GEOS_LIBRARY_PATH = r"C:\ghmc-wet-market-routing\.venv\Lib\site-packages\osgeo\geos_c.dll"
+    # gdal.dll needs its sibling DLLs (proj_9.dll, geos.dll, etc.) on PATH
+    _osgeo_str = r"C:\ghmc-wet-market-routing\.venv\Lib\site-packages\osgeo"
+    os.environ['PATH'] = _osgeo_str + os.pathsep + os.environ.get('PATH', '')
+    # GDAL runtime data files
+    _data_dir = os.path.join(_osgeo_str, 'data')
+    if os.path.isdir(_data_dir):
+        os.environ['GDAL_DATA'] = os.path.join(_data_dir, 'gdal')
+        os.environ['PROJ_LIB'] = os.path.join(_data_dir, 'proj')
+
 # os.environ['PROJ_LIB'] = str(BASE_DIR / 'venv' / 'Lib' / 'site-packages' / 'osgeo' / 'data' / 'proj')
 # os.environ['GDAL_DATA'] = str(BASE_DIR / 'venv' / 'Lib' / 'site-packages' / 'osgeo' / 'data' / 'gdal')
 
@@ -34,7 +49,7 @@ if os.path.exists('/usr/share/gdal'):
 SECRET_KEY = 'django-insecure-hjb-#jx9k%z#5hk6tbu7@0dmo29nb1a99biw$l21h15kf&x!iy'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = ['*']
 CSRF_TRUSTED_ORIGINS = ['https://ghmc-wet-marker-routing-app.onrender.com']
@@ -76,7 +91,7 @@ ROOT_URLCONF = 'core.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -142,13 +157,10 @@ STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-# # GDAL Path
-# GDAL_LIBRARY_PATH = os.path.join(BASE_DIR, 'venv', 'Lib', 'site-packages', 'osgeo', 'gdal.dll')
-#
-# # GEOS Path (Add this line)
-# GEOS_LIBRARY_PATH = os.path.join(BASE_DIR, 'venv', 'Lib', 'site-packages', 'osgeo', 'geos_c.dll')
 
 
 CORS_ALLOW_ALL_ORIGINS = True

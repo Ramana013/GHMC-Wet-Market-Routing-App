@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Risk Results</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8 text-gray-800 min-h-screen">
+    <div class="max-w-6xl mx-auto">
+
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-blue-600">
+                {{ selected_risk|default:"All" }} Risk Shops {% if selected_zone %}({{ selected_zone }}){% endif %}
+            </h1>
+            <a href="/" class="text-blue-500 hover:underline">← Back to Dashboard</a>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-50 text-gray-600 text-sm uppercase tracking-wider">
+                        <th class="p-4 border-b">Shop Name</th>
+                        <th class="p-4 border-b">Zone</th>
+                        <th class="p-4 border-b">Circle</th>
+                        <th class="p-4 border-b">Ward</th>
+                        <th class="p-4 border-b">Owner</th>
+                        <th class="p-4 border-b">Risk Level</th>
+                        <th class="p-4 border-b">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for shop in shops %}
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="p-4 font-medium">{{ shop.title }}</td>
+                        <td class="p-4 text-gray-600">{{ shop.zone|default:"-" }}</td>
+                        <td class="p-4 text-gray-600">{{ shop.circle|default:"-" }}</td>
+                        <td class="p-4 text-gray-600">{{ shop.ward|default:"-" }}</td>
+                        <td class="p-4 text-gray-600">{{ shop.owner_name|default:"-" }}</td>
+                        <td class="p-4">
+                            <span class="px-3 py-1 rounded-full text-xs font-bold
+                                {% if shop.risk_level == 'High' or shop.risk_level == 'Critical' %}bg-red-100 text-red-800
+                                {% elif shop.risk_level == 'Moderate' %}bg-yellow-100 text-yellow-800
+                                {% else %}bg-green-100 text-green-800{% endif %}">
+                                {{ shop.risk_level }}
+                            </span>
+                        </td>
+                        <td class="p-4">
+                            <!-- Link to the individual shop detail page -->
+                            <a href="{% url 'shop_detail' shop.id %}" class="text-blue-600 font-semibold hover:underline">View Details →</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="p-8 text-center text-gray-500">No shops found for this risk level.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

@@ -7,6 +7,8 @@ import { setWorkerUrl } from 'maplibre-gl';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import useSupercluster from 'use-supercluster';
 import { fetchShopsInBBox } from './api';
+import AddShopModal from './components/AddShopModal';
+import SnapShopsPanel from './components/SnapShopsPanel';
 
 setWorkerUrl(workerUrl);
 
@@ -28,6 +30,16 @@ const getRiskColor = (risk) => {
   return '#64748b';
 };
 
+const BrandLetters = ({ letters, colors, size = '16px', weight = '800' }) => {
+  return (
+    <span style={{ fontSize: size, fontWeight: weight, letterSpacing: '0.5px', whiteSpace: 'nowrap', lineHeight: '1.1' }}>
+      {letters.split('').map((char, idx) => (
+        <span key={idx} style={{ color: colors[idx % colors.length] }}>{char}</span>
+      ))}
+    </span>
+  );
+};
+
 export default function App() {
   const mapRef = useRef(null);
   const [mapInstance, setMapInstance] = useState(null);
@@ -38,8 +50,14 @@ export default function App() {
 
   const [wardsGeoJson, setWardsGeoJson] = useState(null);
   const geoJsonLayerRef = useRef(null);
+
+  // Search State
   const [searchQuery, setSearchQuery] = useState('');
-  const [suggestions, setSuggestions] = useState([]);
+  const [suggestions, setSuggestions] = useState([]); // Zones & Wards
+  const [shopResults, setShopResults] = useState([]); // Shops from DB
+
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showSnapPanel, setShowSnapPanel] = useState(false);
 
   // 1. Fetch GeoJSON Boundaries
   useEffect(() => {
@@ -118,36 +136,113 @@ export default function App() {
     geoJsonLayerRef.current = layer;
   }, [mapInstance, wardsGeoJson]);
 
-  // 4. Search Logic
+  // 4. Search Logic (Zones, Wards, and Shops)
   useEffect(() => {
-    if (!wardsGeoJson || !searchQuery.trim()) { setSuggestions([]); return; }
+    if (!searchQuery.trim()) {
+      setSuggestions([]);
+      setShopResults([]);
+      return;
+    }
+
     const q = searchQuery.toLowerCase();
-    const matches = wardsGeoJson.features.filter(f => {
-      const name = f.properties.Name || f.properties.name || '';
-      return name.toLowerCase().includes(q);
-    }).slice(0, 8);
-    setSuggestions(matches);
+
+    // A. Fetch Shops from Backend (Debounced)
+    const timer = setTimeout(async () => {
+      try {
+        // Note: Ensure your local API URL matches this
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+        const res = await fetch(`${apiBaseUrl}/api/shops/?search=${encodeURIComponent(q)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setShopResults(data.features || []);
+        }
+      } catch (err) {
+        console.error("Shop search failed", err);
+      }
+    }, 500);
+
+    // B. Fetch Zones and Wards Locally (Instant)
+    if (wardsGeoJson) {
+      const allZones = [...new Set(wardsGeoJson.features.map(f => {
+        const match = f.properties.Description?.match(/<td>Zone_Name<\/td>\s*<td>([^<]+)<\/td>/i);
+        return match ? match[1].trim() : null;
+      }).filter(Boolean))];
+
+      const zoneMatches = allZones
+        .filter(z => z.toLowerCase().includes(q))
+        .map(z => ({ type: 'ZONE', name: z }));
+
+      const wardMatches = wardsGeoJson.features.filter(f => {
+        const name = f.properties.Name || f.properties.name || '';
+        return name.toLowerCase().includes(q);
+      }).map(f => ({ type: 'WARD', name: f.properties.Name, feature: f }));
+
+      setSuggestions([...zoneMatches, ...wardMatches].slice(0, 5));
+    }
+
+    return () => clearTimeout(timer);
   }, [searchQuery, wardsGeoJson]);
 
-  const handleSelectWard = (feature) => {
+  // Handle Clicking a Zone/Ward
+  const handleSelectWard = (item) => {
     if (!mapInstance || !geoJsonLayerRef.current) return;
     const layer = geoJsonLayerRef.current;
+
     layer.eachLayer(l => { l.setStyle({ color: '#3b82f6', weight: 1, fillOpacity: 0.03, fillColor: '#3b82f6' }); });
-    layer.eachLayer(l => {
-      if (l.feature === feature) {
-        l.setStyle({ color: '#ff7800', weight: 3, fillOpacity: 0.2, fillColor: '#ff7800' });
-        mapInstance.fitBounds(l.getBounds(), { padding: [20, 20] });
-        if (l.bringToFront) l.bringToFront();
+
+    if (item.type === 'WARD') {
+      layer.eachLayer(l => {
+        if (l.feature === item.feature) {
+          l.setStyle({ color: '#ff7800', weight: 3, fillOpacity: 0.2, fillColor: '#ff7800' });
+          mapInstance.fitBounds(l.getBounds(), { padding: [20, 20] });
+          if (l.bringToFront) l.bringToFront();
+        }
+      });
+      setSearchQuery(item.name);
+    }
+    else if (item.type === 'ZONE') {
+      const bounds = L.latLngBounds();
+      layer.eachLayer(l => {
+        const match = l.feature.properties.Description?.match(/<td>Zone_Name<\/td>\s*<td>([^<]+)<\/td>/i);
+        const wardZone = match ? match[1].trim() : '';
+        if (wardZone === item.name) {
+          l.setStyle({ color: '#ff7800', weight: 3, fillOpacity: 0.2, fillColor: '#ff7800' });
+          bounds.extend(l.getBounds());
+          if (l.bringToFront) l.bringToFront();
+        }
+      });
+      if (bounds.isValid()) {
+        mapInstance.fitBounds(bounds, { padding: [20, 20] });
       }
-    });
-    setSearchQuery(feature.properties.Name || '');
+      setSearchQuery(item.name);
+    }
+
+    // Clear dropdowns
     setSuggestions([]);
+    setShopResults([]);
+  };
+
+  // Handle Clicking a Shop
+  const handleSelectShop = (shopFeature) => {
+    const [lng, lat] = shopFeature.geometry.coordinates;
+    setSearchQuery(shopFeature.properties.title);
+    setSuggestions([]);
+    setShopResults([]);
+
+    if (mapInstance) {
+      // Fly to the shop and zoom in heavily
+      mapInstance.flyTo([lat, lng], 18);
+    }
   };
 
   // 5. Setup Supercluster
   const points = shops.map(shop => ({
     type: 'Feature',
-    properties: { cluster: false, shopId: shop.properties.id, ...shop.properties },
+    properties: {
+        cluster: false,
+        shopId: shop.id || shop.properties?.id,
+        ...shop.properties
+    },
     geometry: shop.geometry
   }));
 
@@ -166,16 +261,13 @@ export default function App() {
 
     mapInstance.on('popupopen', (e) => {
       const popupEl = e.popup.getElement();
-
       const surveyBtn = popupEl.querySelector('#survey-btn');
       if (surveyBtn && !surveyBtn.disabled) {
         surveyBtn.onclick = () => {
-          const shopName = surveyBtn.getAttribute('data-shop-name');
-          const koboUrl = `https://ee.kobotoolbox.org/x/gNGx65mT?d[general/market_shop_name]=${encodeURIComponent(shopName)}`;
-          window.open(koboUrl, '_blank');
+          const koboUrl = surveyBtn.getAttribute('data-url');
+          if (koboUrl) window.open(koboUrl, '_blank');
         };
       }
-
       const navBtn = popupEl.querySelector('#navigate-btn');
       if (navBtn) {
         navBtn.onclick = () => {
@@ -211,29 +303,52 @@ export default function App() {
         });
 
         const riskLevel = props.risk_level || 'Unknown';
-        const safeShopName = (props.title || '').replace(/'/g, "&#39;");
+        const shopId = props.shopId || props.id || '';
+        const rawTitle = (props.title || '').trim();
+        const rawOwner = (props.owner_name || '').trim();
+        const rawMobile = (props.mobile || '').trim();
+        const rawZone = (props.zone || '').trim();
+        const rawCircle = (props.circle || '').trim();
+        const rawWard = (props.ward || '').trim();
+
+        const baseUrl = "https://ee.kobotoolbox.org/x/gNGx65mT";
+        const koboUrl = `${baseUrl}` +
+          `?d[general/shop_id]=${encodeURIComponent(shopId)}` +
+          `&d[general/market_shop_name]=${encodeURIComponent(rawTitle)}` +
+          `&d[general/market_shop_owner_name]=${encodeURIComponent(rawOwner)}` +
+          `&d[general/market_shop_owner_contact]=${encodeURIComponent(rawMobile)}` +
+          `&d[general/old_zone]=${encodeURIComponent(rawZone)}` +
+          `&d[general/circle]=${encodeURIComponent(rawCircle)}` +
+          `&d[general/ward_number_name]=${encodeURIComponent(rawWard)}` +
+          `&d[general/lat]=${lat}` +
+          `&d[general/lng]=${lng}`;
 
         const popupHTML = `
-          <div style="padding: 4px;">
+          <div style="padding: 4px; min-width: 240px; max-width: 300px;">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px;">
-              <h3 style="margin: 0; font-size: 15px; font-weight: 700; color: #1e293b; line-height: 1.3;">${props.title || 'Unknown Shop'}</h3>
-              ${isSurveyed ? `<span style="background: ${dotColor}; color: white; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold;">${riskLevel} Risk</span>` : ''}
+              <h3 style="margin: 0; font-size: 15px; font-weight: 700; color: #1e293b; line-height: 1.3;">${rawTitle || 'Unknown Shop'}</h3>
+              ${isSurveyed ? `<span style="background: ${dotColor}; color: white; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; white-space: nowrap;">${riskLevel} Risk</span>` : ''}
             </div>
-            <div style="font-size: 13px; color: #334155;">
-              <div style="margin-bottom: 6px;"><span style="color: #64748b;">Phone:</span> <strong>${props.mobile || 'N/A'}</strong></div>
-              <div style="margin-bottom: 6px;"><span style="color: #64748b;">Circle:</span> <strong>${props.circle || 'N/A'}</strong></div>
-              <div style="margin-bottom: 6px;"><span style="color: #64748b;">Ward:</span> <strong>${props.ward || 'N/A'}</strong></div>
 
-              <div style="display: flex; gap: 8px; margin-top: 12px;">
-                <button id="navigate-btn" data-lat="${lat}" data-lng="${lng}" style="flex: 1; padding: 9px; background: #10b981; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Navigate</button>
-                <button id="survey-btn" ${isSurveyed ? 'disabled' : ''} data-shop-name="${safeShopName}" style="flex: 2; padding: 9px; background: ${isSurveyed ? '#e2e8f0' : '#3b82f6'}; color: ${isSurveyed ? '#94a3b8' : 'white'}; border: none; border-radius: 6px; font-weight: 600; cursor: ${isSurveyed ? 'not-allowed' : 'pointer'};">
-                  ${isSurveyed ? 'Survey Completed' : 'Complete Survey'}
-                </button>
-              </div>
+            <div style="font-size: 13px; color: #334155; display: flex; flex-direction: column; gap: 6px;">
+              <div><span style="color: #64748b; display: inline-block; width: 70px;">Owner:</span> <strong>${rawOwner || 'N/A'}</strong></div>
+              <div><span style="color: #64748b; display: inline-block; width: 70px;">Phone:</span> <strong>${rawMobile || 'N/A'}</strong></div>
+              <div><span style="color: #64748b; display: inline-block; width: 70px;">Zone:</span> <strong>${rawZone || 'N/A'}</strong></div>
+              <div><span style="color: #64748b; display: inline-block; width: 70px;">Circle:</span> <strong>${rawCircle || 'N/A'}</strong></div>
+              <div><span style="color: #64748b; display: inline-block; width: 70px;">Ward:</span> <strong>${rawWard || 'N/A'}</strong></div>
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-top: 14px;">
+              <button id="navigate-btn" data-lat="${lat}" data-lng="${lng}" style="flex: 1; padding: 10px; background: #10b981; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px;">Navigate</button>
+              <button id="survey-btn" ${isSurveyed ? 'disabled' : ''}
+                data-url="${koboUrl}"
+                style="flex: 2; padding: 10px; background: ${isSurveyed ? '#e2e8f0' : '#3b82f6'}; color: ${isSurveyed ? '#94a3b8' : 'white'}; border: none; border-radius: 6px; font-weight: 600; cursor: ${isSurveyed ? 'not-allowed' : 'pointer'}; font-size: 13px;">
+                ${isSurveyed ? 'Survey Completed' : 'Complete Survey'}
+              </button>
             </div>
           </div>
         `;
-        marker.bindPopup(popupHTML, { minWidth: 260 });
+        marker.bindPopup(popupHTML);
         layer.addLayer(marker);
       }
     });
@@ -241,33 +356,70 @@ export default function App() {
   }, [clusters, mapInstance, supercluster, shops.length]);
 
   return (
-    <div style={{ width: '100vw', height: '100vh', margin: 0, padding: '50px', boxSizing: 'border-box', backgroundColor: '#f1f5f9', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+    <div style={{ width: '100vw', height: '100dvh', margin: 0, padding: '12px', boxSizing: 'border-box', backgroundColor: '#f1f5f9', display: 'flex', flexDirection: 'column', gap: '8px' }}>
 
-      {/* SEARCH CARD */}
-      <div style={{ height: '60px', background: 'white', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', zIndex: 1000, display: 'flex', alignItems: 'center', padding: '0 20px', flexShrink: 0 }}>
-        <h2 style={{ margin: 0, fontSize: '18px', color: '#1e293b', marginRight: '30px' }}>GHMC Routing</h2>
-        <div style={{ position: 'relative', width: '100%', maxWidth: '400px' }}>
-          <input
-            type="text" placeholder="Search Ward/Zone..." value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: '100%', padding: '8px 15px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none' }}
-          />
-          {suggestions.length > 0 && (
-            <ul style={{ position: 'absolute', top: '40px', left: 0, right: 0, listStyle: 'none', margin: 0, padding: 0, background: 'white', borderRadius: '6px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', overflow: 'hidden', zIndex: 1001, maxHeight: '300px', overflowY: 'auto' }}>
-              {suggestions.map((s, i) => (
-                <li key={i} onClick={() => handleSelectWard(s)} style={{ padding: '10px 15px', cursor: 'pointer', borderBottom: i < suggestions.length -1 ? '1px solid #eee' : 'none', fontSize: '14px', color: '#1e293b' }} onMouseEnter={(e) => e.target.style.background = '#f8fafc'} onMouseLeave={(e) => e.target.style.background = 'white'}>
-                  {s.properties.Name || 'Unknown Zone'}
-                </li>
-              ))}
-            </ul>
-          )}
+      {/* SEARCH + ACTION BAR */}
+      <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', zIndex: 1000, padding: '10px 12px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 'auto' }}>
+            <BrandLetters letters="GHMC" colors={['#0c9126', '#dec83a', '#a51ca6', '#f55187']} size="16px" weight="800" />
+            <span style={{ margin: 0, fontSize: '9px', fontWeight: '600', color: '#64748b', lineHeight: '1.1', letterSpacing: '1.8px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Routing</span>
+          </div>
+
+          <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+            <input
+              type="text" placeholder="Search Shop, Ward, or Zone..." value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
+            />
+
+            {/* Combined Suggestions Dropdown */}
+            {(suggestions.length > 0 || shopResults.length > 0) && (
+              <ul style={{ position: 'absolute', top: '40px', left: 0, right: 0, listStyle: 'none', margin: 0, padding: 0, background: 'white', borderRadius: '6px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', overflow: 'hidden', zIndex: 1001, maxHeight: '300px', overflowY: 'auto' }}>
+
+                {/* 1. Render Shops First */}
+                {shopResults.map((shop, i) => (
+                  <li key={`shop-${i}`} onClick={() => handleSelectShop(shop)} style={{ padding: '10px 15px', cursor: 'pointer', borderBottom: '1px solid #eee', fontSize: '14px', color: '#1e293b' }} onMouseEnter={(e) => e.target.style.background = '#f8fafc'} onMouseLeave={(e) => e.target.style.background = 'white'}>
+                    🏪 Shop: <strong>{shop.properties.title}</strong> <span style={{ fontSize: '12px', color: '#64748b' }}>({shop.properties.circle || 'Unknown'})</span>
+                  </li>
+                ))}
+
+                {/* 2. Render Wards/Zones Next */}
+                {suggestions.map((s, i) => (
+                  <li key={`zone-${i}`} onClick={() => handleSelectWard(s)} style={{ padding: '10px 15px', cursor: 'pointer', borderBottom: (i < suggestions.length - 1 || shopResults.length > 0) ? '1px solid #eee' : 'none', fontSize: '14px', color: '#1e293b' }} onMouseEnter={(e) => e.target.style.background = '#f8fafc'} onMouseLeave={(e) => e.target.style.background = 'white'}>
+                    {s.type === 'ZONE' ? `📍 Zone: ${s.name}` : `🔹 Ward: ${s.name}`}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+
+        {/* Row 2: Action buttons */}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={() => setShowAddModal(true)} style={{ flex: 1, padding: '10px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap', touchAction: 'manipulation' }}>
+            ➕ Add New Shop
+          </button>
+          <button onClick={() => setShowSnapPanel(true)} style={{ flex: 1, padding: '10px', background: '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap', touchAction: 'manipulation' }}>
+            📍 Snap Nearby
+          </button>
         </div>
       </div>
 
       {/* MAP CARD */}
-      <div style={{ flex: 1, position: 'relative', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
+      <div style={{ flex: 1, position: 'relative', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', minHeight: 0 }}>
         <div id="map" style={{ width: '100%', height: '100%' }}></div>
       </div>
+
+      {/* ADD SHOP MODAL */}
+      {showAddModal && (
+        <AddShopModal onClose={(success) => { setShowAddModal(false); if (success) loadShops(bounds); }} />
+      )}
+
+      {/* SNAP SHOPS PANEL */}
+      {showSnapPanel && (
+        <SnapShopsPanel onClose={() => setShowSnapPanel(false)} onSuccess={() => loadShops(bounds)} />
+      )}
 
     </div>
   );

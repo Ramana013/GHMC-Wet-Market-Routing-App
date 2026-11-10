@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GHMC Survey Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 p-8 font-sans text-gray-800 min-h-screen">
+    <div class="max-w-6xl mx-auto">
+
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-blue-600">
+                GHMC Dashboard {% if selected_zone %}- <span class="text-gray-700">{{ selected_zone }}</span>{% endif %}
+            </h1>
+            {% if selected_zone or selected_risk %}
+                <a href="/" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg font-medium text-sm transition shadow-sm">✖ Clear Filters</a>
+            {% endif %}
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="bg-white p-5 rounded-lg shadow-sm mb-8 flex gap-4 items-center">
+            <form method="GET" class="flex gap-4 items-center w-full">
+                {% if selected_zone %}<input type="hidden" name="zone" value="{{ selected_zone }}">{% endif %}
+
+                <label class="font-bold text-gray-700">Search Risk Level:</label>
+                <select name="risk" class="border border-gray-300 rounded-md p-2 outline-none focus:ring-2 focus:ring-blue-500 min-w-[200px]" onchange="this.form.submit()">
+                    <option value="">All Risk Levels</option>
+                    <option value="Low" {% if selected_risk == 'Low' %}selected{% endif %}>Low</option>
+                    <option value="Moderate" {% if selected_risk == 'Moderate' %}selected{% endif %}>Moderate</option>
+                    <option value="High" {% if selected_risk == 'High' %}selected{% endif %}>High</option>
+                    <option value="Critical" {% if selected_risk == 'Critical' %}selected{% endif %}>Critical</option>
+                </select>
+
+                <noscript><button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Apply</button></noscript>
+            </form>
+        </div>
+
+        <!-- Top Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
+                <h2 class="text-sm font-semibold text-gray-500 uppercase">Total Shops (Filtered)</h2>
+                <p class="text-4xl font-bold mt-2">{{ total_shops }}</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
+                <h2 class="text-sm font-semibold text-gray-500 uppercase">Completed Surveys</h2>
+                <p class="text-4xl font-bold text-green-600 mt-2">{{ completed_surveys }}</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-yellow-500">
+                <h2 class="text-sm font-semibold text-gray-500 uppercase">Pending Surveys</h2>
+                <p class="text-4xl font-bold text-yellow-600 mt-2">{{ pending_surveys }}</p>
+            </div>
+        </div>
+
+        <!-- Chart and Zone List -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+
+            <!-- Chart Section (Expanded to take 2 columns) -->
+            <div class="bg-white p-6 rounded-lg shadow-md md:col-span-2">
+                <h2 class="text-xl font-bold mb-6 border-b pb-3">Risk Distribution</h2>
+                <div class="h-80 flex justify-center items-center">
+                    <canvas id="riskChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Zone List Section -->
+            <div class="bg-white p-6 rounded-lg shadow-md flex flex-col">
+                <h2 class="text-xl font-bold mb-4 border-b pb-3">Shops by Zone</h2>
+                <p class="text-sm text-gray-500 mb-4">Click a zone to filter the dashboard.</p>
+                <ul class="space-y-2 overflow-y-auto flex-1 pr-2">
+                    {% for zone in zone_counts %}
+                        <li>
+                            <a href="?zone={{ zone.zone }}" class="flex justify-between items-center p-3 rounded-lg hover:bg-blue-50 transition border border-transparent hover:border-blue-100 {% if selected_zone == zone.zone %}bg-blue-100 font-bold border-blue-200{% endif %}">
+                                <span class="text-gray-700">{{ zone.zone|default:"Unassigned" }}</span>
+                                <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-sm">{{ zone.count }}</span>
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Chart.js Script -->
+    <script>
+        const ctx = document.getElementById('riskChart').getContext('2d');
+        const riskChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: {{ chart_labels|safe }},
+                datasets: [{
+                    label: 'Number of Shops',
+                    data: {{ chart_values|safe }},
+                    backgroundColor: [
+                        '#10b981', // Low (Green)
+                        '#f59e0b', // Moderate (Orange)
+                        '#ef4444', // High (Red)
+                        '#8b5cf6', // Critical (Purple)
+                        '#9ca3af'  // Unknown (Gray)
+                    ],
+                    borderRadius: 6,
+                    barThickness: 50 // Makes bars thicker and cleaner
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { precision: 0, font: { size: 14 } }
+                    },
+                    x: {
+                        ticks: { font: { size: 14, weight: 'bold' } }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

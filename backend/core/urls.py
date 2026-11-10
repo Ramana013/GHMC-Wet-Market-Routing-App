@@ -17,9 +17,20 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from api.views import ShopViewportAPIView
+from django.conf.urls.static import static
+from django.conf import settings
+from api.views import dashboard_view, results_view, shop_detail_view
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/shops/', ShopViewportAPIView.as_view(), name='shops-api'),
     path('api/', include('api.urls')),
+    path('', dashboard_view, name='dashboard'),
+    # 2. Results Page (When you filter by risk)
+    path('results/', results_view, name='results'),
+
+    # 3. Individual Shop Page (When you click 'View Details')
+    path('shop/<uuid:shop_id>/', shop_detail_view, name='shop_detail'),
 
 ]
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

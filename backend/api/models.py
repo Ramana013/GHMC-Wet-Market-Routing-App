@@ -5,10 +5,11 @@ class Shop(models.Model):
     title = models.CharField(max_length=255)
     owner_name = models.CharField(max_length=255, blank=True, null=True)
     mobile = models.CharField(max_length=15, blank=True, null=True)
-    zone = models.CharField(max_length=100)
-    circle = models.CharField(max_length=100)
+    zone = models.CharField(max_length=100, null=True, blank=True, db_index=True)
+    circle = models.CharField(max_length=100, null=True, blank=True)
     category = models.CharField(max_length=100)
     ward = models.CharField(max_length=100, blank=True, null=True)
+    photo_url = models.URLField(null=True, blank=True)
 
     # This PointField uses PostGIS to store exact map coordinates
     location = models.PointField(geography=True, null=True, blank=True)
@@ -51,3 +52,17 @@ class ShopSurvey(models.Model):
 
     def __str__(self):
         return f"Survey for {self.shop.title} - {self.overall_risk_level}"
+
+class WardsBoundary(models.Model):
+    ward_name = models.CharField(max_length=100)
+    circle_name = models.CharField(max_length=100, null=True, blank=True)
+    zone_name = models.CharField(max_length=100, null=True, blank=True)
+    geom = models.MultiPolygonField(srid=4326, geography=False)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['geom'], name='wards_geom_idx'),
+        ]
+
+    def __str__(self):
+        return self.ward_name
